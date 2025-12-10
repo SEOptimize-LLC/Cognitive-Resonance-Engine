@@ -238,13 +238,16 @@ def render_input_form(num_icps: int):
         )
         
         if submitted:
+            # Debug: Show what values we got
+            st.write(f"DEBUG: industry value = '{industry}', type = {type(industry)}")
+            
             # Validation
             errors = []
             if not client_name:
                 errors.append("Company name is required")
             if not website_url:
                 errors.append("Website URL is required")
-            if not industry:
+            if industry is None:
                 errors.append("Please select an industry")
             
             if errors:
