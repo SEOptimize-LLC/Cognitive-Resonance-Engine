@@ -404,6 +404,16 @@ class JourneyMappingModule:
     
     def _extract_json(self, content: str) -> Dict[str, Any]:
         """Extract JSON from LLM response."""
+        original_content = content  # Keep original for debugging
+
+        # Log content length for debugging
+        print(f"[JourneyMapping] Received content length: {len(content) if content else 0}")
+
+        if not content or not content.strip():
+            print(f"[JourneyMapping] ERROR: Empty content received from LLM!")
+            logger.error("Empty content received from LLM for journey mapping")
+            return {"parse_error": "Empty content received", "raw_content": ""}
+
         if "```json" in content:
             start = content.find("```json") + 7
             end = content.find("```", start)
@@ -414,12 +424,15 @@ class JourneyMappingModule:
             end = content.find("```", start)
             if end > start:
                 content = content[start:end].strip()
-        
+
         try:
             return json.loads(content)
         except json.JSONDecodeError as e:
+            print(f"[JourneyMapping] ERROR: Failed to parse journey JSON: {e}")
+            print(f"[JourneyMapping] Content preview: {content[:500] if content else 'EMPTY'}")
             logger.error(f"Failed to parse journey JSON: {e}")
-            return {}
+            logger.error(f"Content preview: {content[:200] if content else 'EMPTY'}")
+            return {"parse_error": str(e), "raw_content": original_content}
     
     def _parse_journey(
         self,
@@ -427,7 +440,13 @@ class JourneyMappingModule:
         icp: ICP
     ) -> CustomerJourneyMap:
         """Parse journey data into structured object."""
-        
+
+        # Handle parse errors with fallback
+        if "parse_error" in data:
+            print(f"[JourneyMapping] Using fallback due to parse error: {data.get('parse_error')}")
+            logger.warning(f"Using fallback journey map due to JSON parse error")
+            return self._create_fallback_journey(icp)
+
         def parse_stage(stage_data: Dict[str, Any]) -> JourneyStage:
             """Parse a single stage."""
             if not stage_data:
@@ -477,4 +496,90 @@ class JourneyMappingModule:
             content_calendar_priorities=data.get(
                 "content_calendar_priorities", []
             )
+        )
+
+    def _create_fallback_journey(self, icp: ICP) -> CustomerJourneyMap:
+        """Create a fallback journey map when LLM parsing fails."""
+        print(f"[JourneyMapping] Creating fallback journey map for: {icp.icp_name}")
+
+        def create_fallback_stage(
+            objective: str,
+            knowledge: str,
+            emotions: List[str],
+            questions: List[str],
+            themes: List[str],
+            channels: List[str]
+        ) -> JourneyStage:
+            """Create a basic stage with fallback data."""
+            return JourneyStage(
+                objective=objective,
+                knowledge_level=knowledge,
+                emotional_state=emotions,
+                key_questions=questions,
+                content_themes=themes,
+                content_ideas=[
+                    ContentIdea(
+                        title=f"[Placeholder] {themes[0]} content" if themes else "[Placeholder content]",
+                        format="blog",
+                        hook="Content generation failed - please retry",
+                        key_message="Please retry the analysis for complete results",
+                        cta="Learn more"
+                    )
+                ],
+                preferred_channels=channels,
+                targeting_criteria=[],
+                kpis=["Engagement rate", "Conversion rate"]
+            )
+
+        # Use ICP data to inform fallback
+        research_channels = icp.behavioral.research_channels[:3] if icp.behavioral.research_channels else ["LinkedIn", "Google Search", "Industry publications"]
+
+        return CustomerJourneyMap(
+            icp_name=icp.icp_name,
+            overall_timeline="Typical B2B: 3-6 months (fallback estimate)",
+            awareness_stage=create_fallback_stage(
+                objective="Problem recognition",
+                knowledge="Experiencing symptoms but not searching yet",
+                emotions=["Frustrated", "Uncertain"],
+                questions=["Why is this so difficult?", "Is there a better way?"],
+                themes=["Problem education", "Industry trends"],
+                channels=research_channels
+            ),
+            consideration_stage=create_fallback_stage(
+                objective="Solution research",
+                knowledge="Knows problem, exploring solution categories",
+                emotions=["Curious", "Cautiously optimistic"],
+                questions=["What solutions exist?", "What criteria should I use?"],
+                themes=["Solution comparison", "Best practices"],
+                channels=research_channels
+            ),
+            decision_stage=create_fallback_stage(
+                objective="Vendor selection",
+                knowledge="Comparing specific vendors",
+                emotions=["Analytical", "Risk-aware"],
+                questions=["Why you vs alternatives?", "What's the ROI?"],
+                themes=["Case studies", "ROI analysis", "Proof points"],
+                channels=["Direct website", "Sales conversations", "Peer reviews"]
+            ),
+            onboarding_stage=create_fallback_stage(
+                objective="First value achievement",
+                knowledge="Learning to use the solution",
+                emotions=["Hopeful", "Seeking validation"],
+                questions=["Did I make the right choice?", "How do I get value fast?"],
+                themes=["Quick start guides", "Success stories"],
+                channels=["Email", "In-app", "Support"]
+            ),
+            expansion_stage=create_fallback_stage(
+                objective="Maximize lifetime value",
+                knowledge="Proficient user",
+                emotions=["Confident", "Advocacy-ready"],
+                questions=["What else can this do?", "How can I help others?"],
+                themes=["Advanced features", "Community involvement"],
+                channels=["Email", "Community", "Account management"]
+            ),
+            cross_stage_recommendations=[
+                "Note: This is fallback data due to LLM processing issues",
+                "Please retry the analysis for complete, customized results"
+            ],
+            content_calendar_priorities=[]
         )
