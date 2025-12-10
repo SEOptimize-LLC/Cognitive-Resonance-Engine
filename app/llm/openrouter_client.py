@@ -173,9 +173,6 @@ class OpenRouterClient:
         Returns:
             Raw API response dict
         """
-        import logging
-        logger = logging.getLogger(__name__)
-        
         model_config = get_model_config(model)
         
         payload = {
@@ -189,32 +186,44 @@ class OpenRouterClient:
         else:
             payload["max_tokens"] = model_config.max_tokens
         
-        logger.info(f"Making request to model: {model}")
+        # DEBUG: Print request info (visible in Streamlit Cloud logs)
+        print(f"[OpenRouter] Making request to model: {model}")
+        print(f"[OpenRouter] Payload keys: {list(payload.keys())}")
+        print(f"[OpenRouter] Message count: {len(messages)}")
+        
         response = self.client.post("/chat/completions", json=payload)
         
-        # Log response status for debugging
-        logger.info(f"Response status: {response.status_code}")
+        # DEBUG: Print response status
+        print(f"[OpenRouter] Response status: {response.status_code}")
         
         # Check for errors before raising
         if response.status_code != 200:
             try:
                 error_data = response.json()
                 error_msg = error_data.get("error", {}).get("message", "Unknown error")
-                logger.error(f"API Error: {error_msg}")
-                logger.error(f"Full error response: {error_data}")
-            except Exception:
-                logger.error(f"Response text: {response.text[:500]}")
+                print(f"[OpenRouter] API Error: {error_msg}")
+                print(f"[OpenRouter] Full error: {error_data}")
+            except Exception as e:
+                print(f"[OpenRouter] Failed to parse error response: {e}")
+                print(f"[OpenRouter] Response text: {response.text[:1000]}")
         
         response.raise_for_status()
         
         result = response.json()
         
+        # DEBUG: Check response structure
+        print(f"[OpenRouter] Response keys: {list(result.keys())}")
+        
         # Check for empty content
         if "choices" in result and len(result["choices"]) > 0:
             content = result["choices"][0].get("message", {}).get("content", "")
+            print(f"[OpenRouter] Content length: {len(content) if content else 0}")
             if not content:
-                logger.warning(f"Empty content in response from {model}")
-                logger.warning(f"Full response: {result}")
+                print(f"[OpenRouter] WARNING: Empty content!")
+                print(f"[OpenRouter] Full response: {result}")
+        else:
+            print(f"[OpenRouter] WARNING: No choices in response!")
+            print(f"[OpenRouter] Full response: {result}")
         
         return result
     
