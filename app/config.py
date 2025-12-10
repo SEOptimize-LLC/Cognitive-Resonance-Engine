@@ -33,62 +33,64 @@ class ModelConfig:
     supports_web_search: bool = False
 
 
-# Available models via OpenRouter
+# Available models via OpenRouter (using actual OpenRouter model IDs)
 AVAILABLE_MODELS: Dict[str, ModelConfig] = {
-    "perplexity/sonar-deep-research": ModelConfig(
-        id="perplexity/sonar-deep-research",
-        name="Perplexity Sonar Deep Research",
+    # Research model - Perplexity for web search
+    "perplexity/sonar-pro": ModelConfig(
+        id="perplexity/sonar-pro",
+        name="Perplexity Sonar Pro",
         provider=ModelProvider.PERPLEXITY,
-        input_price_per_million=5.00,
-        output_price_per_million=5.00,
+        input_price_per_million=3.00,
+        output_price_per_million=15.00,
         max_tokens=8192,
-        description="Specialized for web research and information gathering",
+        description="Web research with citations",
         supports_web_search=True
     ),
-    "anthropic/claude-sonnet-4.5": ModelConfig(
-        id="anthropic/claude-sonnet-4.5",
-        name="Claude Sonnet 4.5",
+    # Analysis models
+    "anthropic/claude-3.5-sonnet": ModelConfig(
+        id="anthropic/claude-3.5-sonnet",
+        name="Claude 3.5 Sonnet",
         provider=ModelProvider.ANTHROPIC,
         input_price_per_million=3.00,
         output_price_per_million=15.00,
         max_tokens=8192,
         description="Advanced reasoning and analysis"
     ),
-    "google/gemini-2.5-flash-preview-09-2025": ModelConfig(
-        id="google/gemini-2.5-flash-preview-09-2025",
-        name="Gemini 2.5 Flash Preview",
+    "google/gemini-1.5-flash": ModelConfig(
+        id="google/gemini-1.5-flash",
+        name="Gemini 1.5 Flash",
         provider=ModelProvider.GOOGLE,
         input_price_per_million=0.075,
         output_price_per_million=0.30,
         max_tokens=8192,
         description="Fast and cost-effective"
     ),
-    "openai/gpt-5-mini": ModelConfig(
-        id="openai/gpt-5-mini",
-        name="GPT-5 Mini",
+    "openai/gpt-4o-mini": ModelConfig(
+        id="openai/gpt-4o-mini",
+        name="GPT-4o Mini",
         provider=ModelProvider.OPENAI,
         input_price_per_million=0.15,
         output_price_per_million=0.60,
         max_tokens=16384,
         description="Efficient general-purpose model"
     ),
-    "openai/gpt-4.1": ModelConfig(
-        id="openai/gpt-4.1",
-        name="GPT-4.1",
+    "openai/gpt-4o": ModelConfig(
+        id="openai/gpt-4o",
+        name="GPT-4o",
         provider=ModelProvider.OPENAI,
-        input_price_per_million=2.00,
-        output_price_per_million=8.00,
+        input_price_per_million=2.50,
+        output_price_per_million=10.00,
         max_tokens=8192,
         description="High-quality reasoning and generation"
     ),
-    "x-ai/grok-4.1-fast": ModelConfig(
-        id="x-ai/grok-4.1-fast",
-        name="Grok 4.1 Fast",
+    "x-ai/grok-beta": ModelConfig(
+        id="x-ai/grok-beta",
+        name="Grok Beta",
         provider=ModelProvider.XAI,
-        input_price_per_million=2.00,
-        output_price_per_million=8.00,
+        input_price_per_million=5.00,
+        output_price_per_million=15.00,
         max_tokens=8192,
-        description="Fast inference with strong reasoning"
+        description="X.AI's latest model"
     ),
 }
 
@@ -98,9 +100,9 @@ ANALYSIS_MODELS = {
     if not v.supports_web_search
 }
 
-# Default models
-DEFAULT_RESEARCH_MODEL = "perplexity/sonar-deep-research"
-DEFAULT_ANALYSIS_MODEL = "anthropic/claude-sonnet-4.5"
+# Default models (using actual OpenRouter model IDs)
+DEFAULT_RESEARCH_MODEL = "perplexity/sonar-pro"
+DEFAULT_ANALYSIS_MODEL = "anthropic/claude-3.5-sonnet"
 
 # Aliases for clarity
 PERPLEXITY_RESEARCH_MODEL = DEFAULT_RESEARCH_MODEL

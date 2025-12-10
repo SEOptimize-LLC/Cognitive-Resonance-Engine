@@ -238,9 +238,6 @@ def render_input_form(num_icps: int):
         )
         
         if submitted:
-            # Debug: Show what values we got
-            st.write(f"DEBUG: industry value = '{industry}', type = {type(industry)}")
-            
             # Validation
             errors = []
             if not client_name:
