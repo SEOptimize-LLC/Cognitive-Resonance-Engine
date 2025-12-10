@@ -186,8 +186,9 @@ def render_input_form(num_icps: int):
         with col2:
             industry = st.selectbox(
                 "Industry *",
-                options=["Select an industry..."] + INDUSTRIES,
-                index=0,
+                options=INDUSTRIES,
+                index=None,
+                placeholder="Select an industry...",
                 help="Primary industry category"
             )
             
@@ -243,7 +244,7 @@ def render_input_form(num_icps: int):
                 errors.append("Company name is required")
             if not website_url:
                 errors.append("Website URL is required")
-            if industry == "Select an industry...":
+            if not industry:
                 errors.append("Please select an industry")
             
             if errors:

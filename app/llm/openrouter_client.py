@@ -173,6 +173,9 @@ class OpenRouterClient:
         Returns:
             Raw API response dict
         """
+        import logging
+        logger = logging.getLogger(__name__)
+        
         model_config = get_model_config(model)
         
         payload = {
@@ -186,10 +189,34 @@ class OpenRouterClient:
         else:
             payload["max_tokens"] = model_config.max_tokens
         
+        logger.info(f"Making request to model: {model}")
         response = self.client.post("/chat/completions", json=payload)
+        
+        # Log response status for debugging
+        logger.info(f"Response status: {response.status_code}")
+        
+        # Check for errors before raising
+        if response.status_code != 200:
+            try:
+                error_data = response.json()
+                error_msg = error_data.get("error", {}).get("message", "Unknown error")
+                logger.error(f"API Error: {error_msg}")
+                logger.error(f"Full error response: {error_data}")
+            except Exception:
+                logger.error(f"Response text: {response.text[:500]}")
+        
         response.raise_for_status()
         
-        return response.json()
+        result = response.json()
+        
+        # Check for empty content
+        if "choices" in result and len(result["choices"]) > 0:
+            content = result["choices"][0].get("message", {}).get("content", "")
+            if not content:
+                logger.warning(f"Empty content in response from {model}")
+                logger.warning(f"Full response: {result}")
+        
+        return result
     
     def chat(
         self,
