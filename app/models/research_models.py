@@ -211,6 +211,10 @@ class IdealCustomerProfile(BaseModel):
     messaging_hooks: List[str] = Field(default_factory=list)
 
 
+# Alias for convenience
+ICP = IdealCustomerProfile
+
+
 # ===== Value Proposition Models =====
 
 class CustomerJob(BaseModel):
@@ -433,11 +437,18 @@ class ICPResearchResult(BaseModel):
     journey_map: Optional[CustomerJourneyMap] = None
 
 
+# Alias for compatibility
+ICPAnalysisResult = ICPResearchResult
+
+
 class ResearchResults(BaseModel):
     """Complete research results for a client."""
     client_input: ClientInput
     company_profile: Optional[CompanyProfile] = None
     icps: List[ICPResearchResult] = Field(default_factory=list)
+    
+    # Raw data storage
+    raw_research_data: Dict[str, Any] = Field(default_factory=dict)
     
     # Metadata
     created_at: datetime = Field(default_factory=datetime.now)
@@ -447,6 +458,10 @@ class ResearchResults(BaseModel):
     # Cost tracking
     total_cost: float = 0.0
     total_tokens: int = 0
+    cost_summary: Dict[str, Any] = Field(default_factory=dict)
+    
+    # Error handling
+    error: Optional[str] = None
 
 
 # ===== Session State Model =====
