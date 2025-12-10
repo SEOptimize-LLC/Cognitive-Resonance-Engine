@@ -127,11 +127,17 @@ class OpenRouterClient:
     def _get_api_key(self) -> str:
         """Get API key from Streamlit secrets."""
         try:
-            return st.secrets["api_keys"]["OPENROUTER_API_KEY"]
+            # Try flat format first (recommended for Streamlit Cloud)
+            if "OPENROUTER_API_KEY" in st.secrets:
+                return st.secrets["OPENROUTER_API_KEY"]
+            # Try nested format as fallback
+            if "api_keys" in st.secrets:
+                return st.secrets["api_keys"]["OPENROUTER_API_KEY"]
+            raise KeyError("API key not found")
         except (KeyError, FileNotFoundError):
             raise ValueError(
-                "OpenRouter API key not found. Please set it in "
-                ".streamlit/secrets.toml or pass it directly."
+                "OpenRouter API key not found. Please set "
+                "OPENROUTER_API_KEY in your Streamlit secrets."
             )
     
     def _get_headers(self) -> Dict[str, str]:
