@@ -336,9 +336,18 @@ def render_results():
         return
     
     st.header("📊 Research Results")
-    st.success(
-        f"✅ Research complete for **{results.client_input.client_name}**"
-    )
+    
+    # Check for errors
+    if results.error:
+        st.warning(
+            f"⚠️ Research completed with errors for "
+            f"**{results.client_input.client_name}**"
+        )
+        st.error(f"Error: {results.error}")
+    else:
+        st.success(
+            f"✅ Research complete for **{results.client_input.client_name}**"
+        )
     
     # Tabs for different sections
     tabs = st.tabs([
