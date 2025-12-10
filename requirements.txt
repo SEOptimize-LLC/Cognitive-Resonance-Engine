@@ -1,0 +1,23 @@
+# Cognitive Resonance Engine - Dependencies
+# Python 3.9+ required
+
+# ===== Streamlit Framework =====
+streamlit>=1.28.0
+
+# ===== API & HTTP Clients =====
+httpx>=0.25.0              # Modern async HTTP client for API calls
+tenacity>=8.2.0            # Retry logic with exponential backoff
+
+# ===== Data Validation & Models =====
+pydantic>=2.0.0            # Data validation and serialization
+pydantic-settings>=2.0.0   # Settings management with Pydantic
+
+# ===== Document Generation =====
+python-docx>=0.8.11        # DOCX report generation
+markdown>=3.4.0            # Markdown processing
+
+# ===== Token Counting =====
+tiktoken>=0.5.0            # OpenAI token counting (for estimates)
+
+# ===== Utilities =====
+python-dateutil>=2.8.0     # Date/time utilities
