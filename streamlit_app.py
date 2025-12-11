@@ -748,15 +748,43 @@ def render_export(results: ResearchResults):
 # ===== Run Research =====
 
 def run_research(client_input: ClientInput, selected_model: str):
-    """Run the research pipeline."""
+    """Run the research pipeline with real-time progress display."""
     st.session_state.is_running = True
     st.session_state.stage_outputs = {}
-    
+
     try:
         from app.core.orchestrator import ResearchOrchestrator
-        
-        # Progress callback
+
+        # Calculate total steps: 2 base stages + 3 stages per ICP
+        num_icps = client_input.num_icps
+        total_steps = 2 + (num_icps * 3)  # data_ingestion, audience_research + (usp, pain, journey) per ICP
+        completed_steps = 0
+
+        # Create status container for real-time updates
+        status_container = st.status(
+            f"🚀 Starting research for **{client_input.client_name}**...",
+            expanded=True
+        )
+
+        # Progress bar and stage text placeholders inside status
+        with status_container:
+            progress_bar = st.progress(0, text="Initializing...")
+            stage_text = st.empty()
+            stage_details = st.empty()
+
+        # Stage descriptions for user-friendly display
+        stage_descriptions = {
+            "data_ingestion": ("🔍 Data Ingestion", "Researching company information via web search..."),
+            "audience_research": ("👥 Audience Research", "Generating Ideal Customer Profiles..."),
+            "usp_extraction": ("💎 Value Proposition", "Mapping value propositions to customer needs..."),
+            "pain_taxonomy": ("😰 Pain Analysis", "Categorizing customer friction points..."),
+            "journey_mapping": ("🗺️ Journey Mapping", "Creating customer journey maps...")
+        }
+
+        # Progress callback with real-time UI updates
         def progress_callback(stage_id: str, status: str, data=None, error=None):
+            nonlocal completed_steps
+
             if stage_id not in st.session_state.stage_outputs:
                 st.session_state.stage_outputs[stage_id] = {}
             st.session_state.stage_outputs[stage_id]["status"] = status
@@ -764,26 +792,76 @@ def run_research(client_input: ClientInput, selected_model: str):
                 st.session_state.stage_outputs[stage_id]["data"] = data
             if error:
                 st.session_state.stage_outputs[stage_id]["error"] = error
-        
+
+            # Get base stage name (remove ICP number suffix if present)
+            base_stage = stage_id
+            icp_num = ""
+            for stage_name in stage_descriptions.keys():
+                if stage_id.startswith(stage_name):
+                    base_stage = stage_name
+                    if stage_id != stage_name:
+                        icp_num = stage_id.replace(stage_name + "_", "")
+                    break
+
+            # Get stage display info
+            stage_title, stage_desc = stage_descriptions.get(
+                base_stage,
+                (f"📊 {stage_id}", "Processing...")
+            )
+
+            # Add ICP number to description if applicable
+            if icp_num:
+                stage_title = f"{stage_title} (ICP {icp_num})"
+
+            if status == "running":
+                status_container.update(label=f"🔄 {stage_title}", state="running")
+                stage_text.markdown(f"**{stage_title}**")
+                stage_details.caption(stage_desc)
+
+            elif status == "complete":
+                completed_steps += 1
+                progress_pct = completed_steps / total_steps
+                progress_bar.progress(progress_pct, text=f"Step {completed_steps} of {total_steps} complete")
+                stage_text.markdown(f"✅ **{stage_title}** - Complete")
+
+                # Show completion data if available
+                if data:
+                    detail_text = ", ".join(f"{k}: {v}" for k, v in data.items())
+                    stage_details.caption(f"Result: {detail_text}")
+
+            elif status == "error":
+                stage_text.markdown(f"⚠️ **{stage_title}** - Error")
+                stage_details.caption(f"Error: {error}")
+
         # Create orchestrator
         orchestrator = ResearchOrchestrator(
             analysis_model=selected_model,
             cost_tracker=st.session_state.cost_tracker
         )
-        
+
         # Run research
         results = orchestrator.run_research(
             client_input,
             progress_callback=progress_callback
         )
-        
+
+        # Final status update
+        status_container.update(
+            label=f"✅ Research complete for **{client_input.client_name}**!",
+            state="complete",
+            expanded=False
+        )
+        progress_bar.progress(1.0, text="All steps complete!")
+
         st.session_state.results = results
         st.session_state.is_running = False
-        
+
         return True
-        
+
     except Exception as e:
         st.session_state.is_running = False
+        if 'status_container' in locals():
+            status_container.update(label=f"❌ Research failed", state="error")
         st.error(f"❌ Research failed: {str(e)}")
         return False
 
@@ -821,14 +899,14 @@ def main():
     # Show input form
     else:
         client_input = render_input_form(num_icps)
-        
+
         if client_input:
             st.session_state.session.client_input = client_input
-            
-            with st.spinner("🚀 Starting research pipeline..."):
-                success = run_research(client_input, selected_model)
-                if success:
-                    st.rerun()
+
+            # Run research with built-in progress display
+            success = run_research(client_input, selected_model)
+            if success:
+                st.rerun()
 
 
 if __name__ == "__main__":
