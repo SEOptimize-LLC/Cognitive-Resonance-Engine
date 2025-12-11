@@ -315,6 +315,16 @@ class PainTaxonomyModule:
     
     def _extract_json(self, content: str) -> Dict[str, Any]:
         """Extract JSON from LLM response."""
+        original_content = content  # Keep original for debugging
+
+        # Log content length for debugging
+        print(f"[PainTaxonomy] Received content length: {len(content) if content else 0}")
+
+        if not content or not content.strip():
+            print(f"[PainTaxonomy] ERROR: Empty content received from LLM!")
+            logger.error("Empty content received from LLM for pain taxonomy")
+            return {"parse_error": "Empty content received", "raw_content": ""}
+
         if "```json" in content:
             start = content.find("```json") + 7
             end = content.find("```", start)
@@ -325,12 +335,15 @@ class PainTaxonomyModule:
             end = content.find("```", start)
             if end > start:
                 content = content[start:end].strip()
-        
+
         try:
             return json.loads(content)
         except json.JSONDecodeError as e:
+            print(f"[PainTaxonomy] ERROR: Failed to parse taxonomy JSON: {e}")
+            print(f"[PainTaxonomy] Content preview: {content[:500] if content else 'EMPTY'}")
             logger.error(f"Failed to parse taxonomy JSON: {e}")
-            return {}
+            logger.error(f"Content preview: {content[:200] if content else 'EMPTY'}")
+            return {"parse_error": str(e), "raw_content": original_content}
     
     def _parse_taxonomy(
         self,
@@ -338,7 +351,13 @@ class PainTaxonomyModule:
         icp: ICP
     ) -> PainPointTaxonomy:
         """Parse taxonomy data into structured object."""
-        
+
+        # Handle parse errors with fallback
+        if "parse_error" in data:
+            print(f"[PainTaxonomy] Using fallback due to parse error: {data.get('parse_error')}")
+            logger.warning(f"Using fallback taxonomy due to JSON parse error")
+            return self._create_fallback_taxonomy(icp)
+
         # Parse functional pains
         functional_pains = []
         for p in data.get("functional_pains", []):
@@ -426,4 +445,57 @@ class PainTaxonomyModule:
             forces_analysis=forces_analysis,
             pain_priority_ranking=data.get("pain_priority_ranking", []),
             messaging_implications=data.get("messaging_implications", [])
+        )
+
+    def _create_fallback_taxonomy(self, icp: ICP) -> PainPointTaxonomy:
+        """Create a fallback taxonomy using ICP data when LLM parsing fails."""
+        print(f"[PainTaxonomy] Creating fallback taxonomy from ICP data for: {icp.icp_name}")
+
+        # Convert existing ICP pain points to detailed pain points
+        functional_pains = []
+        financial_pains = []
+        emotional_pains = []
+
+        for p in icp.pain_points:
+            detailed = DetailedPainPoint(
+                statement=p.statement,
+                category=p.category,
+                severity=p.severity,
+                frequency=p.frequency,
+                current_coping_mechanism=None,
+                impact_if_unresolved="Impact analysis unavailable due to processing error",
+                root_cause=None
+            )
+            # Categorize based on category name
+            if p.category in ["inefficiency", "complexity", "inaccuracy", "capability",
+                             "interoperability", "scalability", "reliability", "functional"]:
+                functional_pains.append(detailed)
+            elif p.category in ["direct_cost", "hidden_cost", "opportunity_cost",
+                               "roi_uncertainty", "cash_flow", "resource_drain", "financial"]:
+                financial_pains.append(detailed)
+            else:
+                emotional_pains.append(detailed)
+
+        # Create basic forces analysis from psychographics
+        forces_analysis = ForcesOfProgressAnalysis(
+            push_factors=icp.psychographics.fears[:3] if icp.psychographics.fears else [],
+            pull_factors=icp.psychographics.aspirations[:3] if icp.psychographics.aspirations else [],
+            habit_factors=["Status quo bias - existing processes", "Switching costs"],
+            anxiety_factors=["Risk of implementation failure", "Uncertainty about ROI"],
+            net_force_assessment="Assessment unavailable - using fallback data",
+            recommended_focus="Focus on demonstrating clear ROI and reducing switching risk",
+            key_trigger_moments=["Budget planning periods", "After experiencing major pain point"]
+        )
+
+        return PainPointTaxonomy(
+            icp_name=icp.icp_name,
+            functional_pains=functional_pains,
+            financial_pains=financial_pains,
+            emotional_pains=emotional_pains,
+            forces_analysis=forces_analysis,
+            pain_priority_ranking=[],
+            messaging_implications=[
+                "Note: This is fallback data due to LLM processing issues",
+                "Please retry the analysis for complete results"
+            ]
         )

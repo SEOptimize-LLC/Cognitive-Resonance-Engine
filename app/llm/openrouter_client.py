@@ -208,23 +208,48 @@ class OpenRouterClient:
                 print(f"[OpenRouter] Response text: {response.text[:1000]}")
         
         response.raise_for_status()
-        
-        result = response.json()
-        
+
+        # Validate response is actually JSON before parsing
+        response_text = response.text.strip()
+        if not response_text:
+            print(f"[OpenRouter] ERROR: Empty response body received!")
+            raise ValueError("Empty response received from OpenRouter API")
+
+        # Check for HTML error pages (common when API has issues)
+        if response_text.startswith('<!') or response_text.startswith('<html'):
+            print(f"[OpenRouter] ERROR: Received HTML instead of JSON!")
+            print(f"[OpenRouter] Response preview: {response_text[:500]}")
+            raise ValueError("Received HTML error page instead of JSON from OpenRouter API")
+
+        try:
+            result = response.json()
+        except Exception as json_err:
+            print(f"[OpenRouter] ERROR: Failed to parse response as JSON: {json_err}")
+            print(f"[OpenRouter] Response preview: {response_text[:500]}")
+            raise ValueError(f"Invalid JSON response from OpenRouter API: {json_err}")
+
         # DEBUG: Check response structure
         print(f"[OpenRouter] Response keys: {list(result.keys())}")
-        
+
+        # Check for API-level errors in the response
+        if "error" in result:
+            error_msg = result.get("error", {}).get("message", str(result.get("error")))
+            print(f"[OpenRouter] API returned error: {error_msg}")
+            raise ValueError(f"OpenRouter API error: {error_msg}")
+
         # Check for empty content
         if "choices" in result and len(result["choices"]) > 0:
             content = result["choices"][0].get("message", {}).get("content", "")
             print(f"[OpenRouter] Content length: {len(content) if content else 0}")
             if not content:
-                print(f"[OpenRouter] WARNING: Empty content!")
+                print(f"[OpenRouter] WARNING: Empty content in response!")
                 print(f"[OpenRouter] Full response: {result}")
+                raise ValueError("OpenRouter API returned empty content")
         else:
             print(f"[OpenRouter] WARNING: No choices in response!")
             print(f"[OpenRouter] Full response: {result}")
-        
+            raise ValueError("OpenRouter API returned no choices in response")
+
         return result
     
     def chat(
